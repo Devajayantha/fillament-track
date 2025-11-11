@@ -1,0 +1,55 @@
+name: Simple Push to VPS (with Artisan Clear)
+
+on:
+  push:
+    branches: [ master ]     # change if needed
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Prune CI files
+        run: |
+          rm -rf .git .github
+
+      - name: Upload Project to VPS (Password Auth)
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_IP }}
+          username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          port: 22
+          source: "."
+          target: "/home/devajayantha/project/tracker"
+          overwrite: true
+          rm: false
+          strip_components: 0
+          exclude: |
+            vendor/
+            node_modules/
+            .env
+            .git/
+            .github/
+            tests/
+            storage/framework/cache/*
+            storage/framework/views/*
+            storage/logs/*
+
+      - name: Run Artisan Clear + Cache on Server
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_IP }}
+          username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          port: 22
+          script: |
+            cd /home/devajayantha/project/tracker
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+            echo "✅ Laravel optimized successfully!"
