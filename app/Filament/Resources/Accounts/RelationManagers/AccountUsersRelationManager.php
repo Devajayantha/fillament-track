@@ -52,6 +52,10 @@ class AccountUsersRelationManager extends RelationManager
                 TextColumn::make('initial_balance')
                     ->numeric(decimalPlaces: 2)
                     ->sortable(),
+                TextColumn::make('balance')
+                    ->numeric(decimalPlaces: 2)
+                    ->label('Balance')
+                    ->sortable(),
                 IconColumn::make('is_primary')
                     ->label('Primary')
                     ->boolean(),

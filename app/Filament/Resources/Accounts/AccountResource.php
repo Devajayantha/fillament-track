@@ -94,7 +94,8 @@ class AccountResource extends Resource
                 TextColumn::make('user_accounts_count')
                     ->label('Assignments')
                     ->counts('userAccounts')
-                    ->sortable(),
+                    ->sortable()
+                    ->visible(fn () => Auth::user()?->is_admin ?? false),
                 TextColumn::make('user.name')
                     ->label('Owner')
                     ->placeholder('')

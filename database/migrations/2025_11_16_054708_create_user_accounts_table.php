@@ -20,6 +20,7 @@ return new class extends Migration
                 ->constrained('accounts')
                 ->cascadeOnDelete();
             $table->decimal('initial_balance', 15, 2)->default(0);
+            $table->decimal('balance', 15, 2)->default(0);
             $table->boolean('is_primary')->default(false);
             $table->timestamps();
 

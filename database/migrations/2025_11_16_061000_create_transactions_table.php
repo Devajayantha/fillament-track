@@ -28,12 +28,14 @@ return new class extends Migration
                 ->nullable()
                 ->constrained('user_accounts')
                 ->nullOnDelete();
+            $table->timestamp('transaction_date')->useCurrent();
             $table->enum('type', TransactionType::values());
             $table->decimal('amount', 15, 2);
             $table->text('desc')->nullable();
             $table->timestamps();
 
             $table->index(['user_id', 'type']);
+            $table->index('transaction_date');
             $table->index(['user_id', 'created_at']);
         });
     }

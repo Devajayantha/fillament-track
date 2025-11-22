@@ -18,6 +18,7 @@ class UserAccount extends Model
         'account_id',
         'user_id',
         'initial_balance',
+        'balance',
         'is_primary',
     ];
 
@@ -28,8 +29,18 @@ class UserAccount extends Model
     {
         return [
             'initial_balance' => 'decimal:2',
+            'balance' => 'decimal:2',
             'is_primary' => 'boolean',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (UserAccount $userAccount): void {
+            if ($userAccount->balance === null) {
+                $userAccount->balance = $userAccount->initial_balance;
+            }
+        });
     }
 
     public function account(): BelongsTo

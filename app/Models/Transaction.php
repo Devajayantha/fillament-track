@@ -23,6 +23,7 @@ class Transaction extends Model
         'type',
         'amount',
         'desc',
+        'transaction_date',
     ];
 
     /**
@@ -33,6 +34,7 @@ class Transaction extends Model
         return [
             'type' => TransactionType::class,
             'amount' => 'decimal:2',
+            'transaction_date' => 'datetime',
         ];
     }
 

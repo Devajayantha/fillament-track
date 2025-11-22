@@ -16,10 +16,13 @@ class UserAccountFactory extends Factory
 
     public function definition(): array
     {
+        $initialBalance = $this->faker->randomFloat(2, 0, 5_000);
+
         return [
             'account_id' => Account::factory(),
             'user_id' => User::factory(),
-            'initial_balance' => $this->faker->randomFloat(2, 0, 5_000),
+            'initial_balance' => $initialBalance,
+            'balance' => $initialBalance,
             'is_primary' => $this->faker->boolean(20),
         ];
     }

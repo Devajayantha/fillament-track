@@ -9,6 +9,7 @@ use App\Models\Transaction;
 use App\Models\UserAccount;
 use BackedEnum;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -93,6 +94,11 @@ class TransactionResource extends Resource
                         TransactionType::Income->value,
                     ], true))
                     ->searchable(),
+                DateTimePicker::make('transaction_date')
+                    ->label('Transaction date')
+                    ->seconds(false)
+                    ->default(now())
+                    ->required(),
                 TextInput::make('amount')
                     ->numeric()
                     ->minValue(0.01)
@@ -116,6 +122,13 @@ class TransactionResource extends Resource
             })
             ->defaultSort('created_at', 'desc')
             ->columns([
+                TextColumn::make('rowNumber')
+                    ->label('#')
+                    ->state(static function (TextColumn $column, $record, int $rowLoop): int {
+                        return $rowLoop + 1;
+                    })
+                    ->sortable(false)
+                    ->searchable(false),
                 TextColumn::make('user.email')
                     ->label('User')
                     ->sortable()
@@ -142,6 +155,10 @@ class TransactionResource extends Resource
                     ->label('Destination')
                     ->placeholder('N/A')
                     ->toggleable(),
+                TextColumn::make('transaction_date')
+                    ->label('Transaction date')
+                    ->dateTime()
+                    ->sortable(),
                 TextColumn::make('amount')
                     ->numeric(decimalPlaces: 2)
                     ->sortable(),
@@ -153,7 +170,7 @@ class TransactionResource extends Resource
                 SelectFilter::make('type')
                     ->options(TransactionType::labels()),
                 Filter::make('created_at')
-                    ->form([
+                    ->schema([
                         DatePicker::make('from'),
                         DatePicker::make('until'),
                     ])

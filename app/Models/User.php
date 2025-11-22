@@ -77,6 +77,7 @@ class User extends Authenticatable
                 ],
                 [
                     'initial_balance' => 0,
+                    'balance' => 0,
                     'is_primary' => true,
                 ],
             );

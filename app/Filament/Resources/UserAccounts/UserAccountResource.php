@@ -3,16 +3,16 @@
 namespace App\Filament\Resources\UserAccounts;
 
 use App\Filament\Resources\UserAccounts\Pages\ManageUserAccounts;
+use App\Models\Account;
 use App\Models\UserAccount;
 use BackedEnum;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -49,36 +49,23 @@ class UserAccountResource extends Resource
                     ->searchable()
                     ->preload()
                     ->visible(fn () => Auth::user()?->is_admin)
-                    ->required(fn () => Auth::user()?->is_admin),
+                    ->required(fn () => Auth::user()?->is_admin)
+                    ->live(),
                 Select::make('account_id')
-                    ->relationship(
-                        'account',
-                        'name',
-                        function (Builder $query): Builder {
-                            $user = Auth::user();
-
-                            if (! $user || $user->is_admin) {
-                                return $query;
-                            }
-
-                            return $query->where(function (Builder $inner) use ($user): void {
-                                $inner
-                                    ->whereNull('user_id')
-                                    ->orWhere('user_id', $user->id);
-                            });
-                        }
-                    )
+                    ->label('Account')
+                    ->options(fn (Get $get): array => static::availableAccountOptions(
+                        static::resolveTargetUserId($get('user_id')),
+                        $get('account_id')
+                    ))
                     ->searchable()
                     ->preload()
+                    ->disabled(fn (Get $get): bool => ! static::resolveTargetUserId($get('user_id')))
                     ->required(),
                 TextInput::make('initial_balance')
                     ->numeric()
                     ->minValue(0)
                     ->step(0.01)
                     ->required(),
-                Toggle::make('is_primary')
-                    ->label('Primary account')
-                    ->default(false),
             ]);
     }
 
@@ -102,9 +89,10 @@ class UserAccountResource extends Resource
                 TextColumn::make('initial_balance')
                     ->numeric(decimalPlaces: 2)
                     ->sortable(),
-                IconColumn::make('is_primary')
-                    ->label('Primary')
-                    ->boolean(),
+                TextColumn::make('balance')
+                    ->numeric(decimalPlaces: 2)
+                    ->label('Balance')
+                    ->sortable(),
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable(),
@@ -139,5 +127,43 @@ class UserAccountResource extends Resource
         return [
             'index' => ManageUserAccounts::route('/'),
         ];
+    }
+
+    protected static function resolveTargetUserId(?int $selectedUserId): ?int
+    {
+        $user = Auth::user();
+
+        if (! $user) {
+            return null;
+        }
+
+        return $user->is_admin ? $selectedUserId : $user->id;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected static function availableAccountOptions(?int $userId, ?int $currentAccountId): array
+    {
+        if (! $userId) {
+            return [];
+        }
+
+        $assignedAccountIds = UserAccount::query()
+            ->where('user_id', $userId)
+            ->when($currentAccountId, fn (Builder $query, int $accountId): Builder => $query->where('account_id', '!=', $accountId))
+            ->pluck('account_id')
+            ->all();
+
+        return Account::query()
+            ->where(function (Builder $query) use ($userId): void {
+                $query
+                    ->whereNull('user_id')
+                    ->orWhere('user_id', $userId);
+            })
+            ->when($assignedAccountIds !== [], fn (Builder $query): Builder => $query->whereNotIn('id', $assignedAccountIds))
+            ->orderBy('name')
+            ->pluck('name', 'id')
+            ->all();
     }
 }
