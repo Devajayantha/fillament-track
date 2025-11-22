@@ -2,11 +2,10 @@
 
 namespace App\Enums;
 
-enum AccountType: string
+enum CategoryType: string
 {
-    case Cash = 'cash';
-    case Ewallet = 'ewallet';
-    case Bank = 'bank';
+    case Expense = 'expense';
+    case Income = 'income';
 
     /**
      * @return list<string>
@@ -22,9 +21,8 @@ enum AccountType: string
     public static function labels(): array
     {
         return [
-            self::Cash->value => 'Cash',
-            self::Ewallet->value => 'E-Wallet',
-            self::Bank->value => 'Bank',
+            self::Expense->value => 'Expense',
+            self::Income->value => 'Income',
         ];
     }
 }

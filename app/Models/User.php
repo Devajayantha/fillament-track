@@ -4,9 +4,10 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Models\Account;
-use App\Models\AccountUser;
+use App\Models\Category;
+use App\Models\Transaction;
+use App\Models\UserAccount;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -52,20 +53,48 @@ class User extends Authenticatable
         ];
     }
 
-    public function accountUsers(): HasMany
+    protected static function booted(): void
     {
-        return $this->hasMany(AccountUser::class);
+        static::created(function (self $user): void {
+            if ($user->is_admin) {
+                return;
+            }
+
+            $primaryAccount = Account::query()
+                ->where('is_primary', true)
+                ->whereNull('user_id')
+                ->orderBy('id')
+                ->first();
+
+            if (! $primaryAccount) {
+                return;
+            }
+
+            UserAccount::firstOrCreate(
+                [
+                    'user_id' => $user->id,
+                    'account_id' => $primaryAccount->id,
+                ],
+                [
+                    'initial_balance' => 0,
+                    'is_primary' => true,
+                ],
+            );
+        });
     }
 
-    public function accounts(): BelongsToMany
+    public function userAccounts(): HasMany
     {
-        return $this->belongsToMany(Account::class, 'account_users')
-            ->withPivot([
-                'initial_balance',
-                'is_active',
-                'is_primary',
-                'created_at',
-                'updated_at',
-            ]);
+        return $this->hasMany(UserAccount::class);
+    }
+
+    public function categories(): HasMany
+    {
+        return $this->hasMany(Category::class);
+    }
+
+    public function transactions(): HasMany
+    {
+        return $this->hasMany(Transaction::class);
     }
 }

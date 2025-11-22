@@ -1,37 +1,28 @@
 <?php
 
-namespace App\Filament\Resources\Accounts;
+namespace App\Filament\Resources\Categories;
 
-use App\Enums\AccountType;
-use App\Filament\Resources\Accounts\Pages\ManageAccounts;
-use App\Filament\Resources\Accounts\RelationManagers\AccountUsersRelationManager;
-use App\Models\Account;
+use App\Enums\CategoryType;
+use App\Filament\Resources\Categories\Pages\ManageCategories;
+use App\Models\Category;
 use BackedEnum;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
-class AccountResource extends Resource
+class CategoryResource extends Resource
 {
-    protected static ?string $model = Account::class;
+    protected static ?string $model = Category::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBanknotes;
-
-    protected static ?string $recordTitleAttribute = 'name';
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedTag;
 
     public static function getNavigationGroup(): ?string
     {
@@ -49,14 +40,12 @@ class AccountResource extends Resource
             ->components([
                 Hidden::make('user_id')
                     ->default(fn () => Auth::id())
-                    ->dehydrated(fn () => ! Auth::user()?->is_admin)
-                    ->required(fn () => ! Auth::user()?->is_admin),
+                    ->dehydrated(fn () => ! Auth::user()?->is_admin),
                 TextInput::make('name')
                     ->required()
                     ->maxLength(255),
                 Select::make('type')
-                    ->options(AccountType::labels())
-                    ->default(AccountType::Cash->value)
+                    ->options(CategoryType::labels())
                     ->required(),
             ]);
     }
@@ -83,41 +72,29 @@ class AccountResource extends Resource
                     ->searchable(),
                 TextColumn::make('type')
                     ->badge()
-                    ->sortable()
                     ->formatStateUsing(
-                        fn ($state): ?string => match (true) {
-                            $state instanceof AccountType => AccountType::labels()[$state->value] ?? $state->value,
-                            is_string($state) => AccountType::labels()[$state] ?? $state,
-                            default => null,
+                        fn ($state): string => match (true) {
+                            $state instanceof CategoryType => CategoryType::labels()[$state->value] ?? $state->value,
+                            is_string($state) => CategoryType::labels()[$state] ?? $state,
+                            default => (string) ($state ?? 'N/A'),
                         }
-                    ),
-                TextColumn::make('user_accounts_count')
-                    ->label('Assignments')
-                    ->counts('userAccounts')
+                    )
                     ->sortable(),
                 TextColumn::make('user.name')
                     ->label('Owner')
                     ->placeholder('')
                     ->sortable(),
-                IconColumn::make('is_primary')
-                    ->label('Primary')
-                    ->boolean(),
                 TextColumn::make('created_at')
                     ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->sortable(),
             ])
             ->filters([
                 SelectFilter::make('type')
-                    ->options(AccountType::labels()),
+                    ->options(CategoryType::labels()),
                 SelectFilter::make('scope')
                     ->label('View')
                     ->options([
-                        'all' => 'All Accounts',
+                        'all' => 'All Categories',
                         'master' => 'Master Only',
                     ])
                     ->default('all')
@@ -127,33 +104,13 @@ class AccountResource extends Resource
                             ? $query->whereNull('user_id')
                             : $query;
                     }),
-            ])
-            ->recordActions([
-                EditAction::make(),
-                DeleteAction::make(),
-            ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
             ]);
-    }
-
-    public static function getRelations(): array
-    {
-        if (! Auth::user()?->is_admin) {
-            return [];
-        }
-
-        return [
-            AccountUsersRelationManager::class,
-        ];
     }
 
     public static function getPages(): array
     {
         return [
-            'index' => ManageAccounts::route('/'),
+            'index' => ManageCategories::route('/'),
         ];
     }
 }

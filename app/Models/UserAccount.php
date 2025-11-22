@@ -5,8 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class AccountUser extends Model
+class UserAccount extends Model
 {
     use HasFactory;
 
@@ -17,7 +18,6 @@ class AccountUser extends Model
         'account_id',
         'user_id',
         'initial_balance',
-        'is_active',
         'is_primary',
     ];
 
@@ -28,7 +28,6 @@ class AccountUser extends Model
     {
         return [
             'initial_balance' => 'decimal:2',
-            'is_active' => 'boolean',
             'is_primary' => 'boolean',
         ];
     }
@@ -41,5 +40,15 @@ class AccountUser extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function sourceTransactions(): HasMany
+    {
+        return $this->hasMany(Transaction::class, 'account_id');
+    }
+
+    public function destinationTransactions(): HasMany
+    {
+        return $this->hasMany(Transaction::class, 'destination_account_id');
     }
 }

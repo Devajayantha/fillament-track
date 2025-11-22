@@ -17,7 +17,7 @@ use Filament\Tables\Table;
 
 class AccountUsersRelationManager extends RelationManager
 {
-    protected static string $relationship = 'accountUsers';
+    protected static string $relationship = 'userAccounts';
 
     protected static ?string $recordTitleAttribute = 'user.name';
 
@@ -35,9 +35,6 @@ class AccountUsersRelationManager extends RelationManager
                     ->minValue(0)
                     ->step(0.01)
                     ->required(),
-                Toggle::make('is_active')
-                    ->default(true)
-                    ->required(),
                 Toggle::make('is_primary')
                     ->label('Primary account'),
             ]);
@@ -53,11 +50,8 @@ class AccountUsersRelationManager extends RelationManager
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('initial_balance')
-                    ->money('usd')
+                    ->numeric(decimalPlaces: 2)
                     ->sortable(),
-                IconColumn::make('is_active')
-                    ->label('Active')
-                    ->boolean(),
                 IconColumn::make('is_primary')
                     ->label('Primary')
                     ->boolean(),

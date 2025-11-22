@@ -11,21 +11,19 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('account_users', function (Blueprint $table) {
-            $table->id();
+        Schema::create('user_accounts', function (Blueprint $table) {
+            $table->bigIncrements('id');
+            $table->foreignId('user_id')
+                ->constrained('users')
+                ->cascadeOnDelete();
             $table->foreignId('account_id')
                 ->constrained('accounts')
                 ->cascadeOnDelete();
-            $table->foreignId('user_id')
-                ->nullable()
-                ->constrained()
-                ->nullOnDelete();
-            $table->decimal('initial_balance', 12, 2)->default(0);
-            $table->boolean('is_active')->default(true);
+            $table->decimal('initial_balance', 15, 2)->default(0);
             $table->boolean('is_primary')->default(false);
             $table->timestamps();
 
-            $table->unique(['account_id', 'user_id']);
+            $table->unique(['user_id', 'account_id']);
         });
     }
 
@@ -34,6 +32,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('account_users');
+        Schema::dropIfExists('user_accounts');
     }
 };

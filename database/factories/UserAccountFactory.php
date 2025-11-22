@@ -3,16 +3,16 @@
 namespace Database\Factories;
 
 use App\Models\Account;
-use App\Models\AccountUser;
+use App\Models\UserAccount;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends Factory<AccountUser>
+ * @extends Factory<UserAccount>
  */
-class AccountUserFactory extends Factory
+class UserAccountFactory extends Factory
 {
-    protected $model = AccountUser::class;
+    protected $model = UserAccount::class;
 
     public function definition(): array
     {
@@ -20,7 +20,6 @@ class AccountUserFactory extends Factory
             'account_id' => Account::factory(),
             'user_id' => User::factory(),
             'initial_balance' => $this->faker->randomFloat(2, 0, 5_000),
-            'is_active' => $this->faker->boolean(80),
             'is_primary' => $this->faker->boolean(20),
         ];
     }
