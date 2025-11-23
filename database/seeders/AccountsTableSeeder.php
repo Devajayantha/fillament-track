@@ -15,13 +15,13 @@ class AccountsTableSeeder extends Seeder
     {
         $accounts = [
             [
-                'name' => 'Cash',
-                'type' => AccountType::Cash->value,
+                'name' => 'Primary Account',
+                'type' => AccountType::Bank->value,
                 'is_primary' => true,
             ],
             [
-                'name' => 'Bank BCA',
-                'type' => AccountType::Bank->value,
+                'name' => 'Cash Wallet',
+                'type' => AccountType::Cash->value,
                 'is_primary' => false,
             ],
         ];

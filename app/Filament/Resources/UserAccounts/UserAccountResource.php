@@ -13,6 +13,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -60,12 +61,15 @@ class UserAccountResource extends Resource
                     ->searchable()
                     ->preload()
                     ->disabled(fn (Get $get): bool => ! static::resolveTargetUserId($get('user_id')))
-                    ->required(),
+                    ->visible(fn (?UserAccount $record): bool => $record === null)
+                    ->dehydrated(fn (?UserAccount $record): bool => $record === null)
+                    ->required(fn (?UserAccount $record): bool => $record === null),
                 TextInput::make('initial_balance')
                     ->numeric()
                     ->minValue(0)
                     ->step(0.01)
-                    ->required(),
+                    ->required()
+                    ->disabled(fn (?UserAccount $record): bool => $record?->hasTransactions() ?? false),
             ]);
     }
 
@@ -119,7 +123,11 @@ class UserAccountResource extends Resource
                     )
                     ->searchable()
                     ->preload(),
-            ]);
+                    ])
+                    ->recordActions([
+                    EditAction::make()
+                        ->hidden(fn (UserAccount $record): bool => $record->hasTransactions()),
+                    ]);
     }
 
     public static function getPages(): array

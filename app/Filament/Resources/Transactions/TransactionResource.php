@@ -9,20 +9,23 @@ use App\Models\Transaction;
 use App\Models\UserAccount;
 use BackedEnum;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\Indicator;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 
 class TransactionResource extends Resource
@@ -75,16 +78,47 @@ class TransactionResource extends Resource
                     ->required(fn (Get $get): bool => ($get('type') ?? null) !== TransactionType::Transfer->value),
                 Select::make('account_id')
                     ->label('Account')
-                    ->options(fn (Get $get): array => static::userAccountOptions(static::resolveUserId($get('user_id'))))
+                    ->options(function (Get $get): array {
+                        $options = static::userAccountOptions(static::resolveUserId($get('user_id')));
+
+                        if (
+                            ($get('type') ?? null) === TransactionType::Transfer->value
+                            && ($destinationId = $get('destination_account_id'))
+                        ) {
+                            unset($options[$destinationId]);
+                        }
+
+                        return $options;
+                    })
                     ->visible(fn (Get $get): bool => ($get('type') ?? null) !== TransactionType::Income->value)
                     ->required(fn (Get $get): bool => in_array($get('type'), [
                         TransactionType::Expense->value,
                         TransactionType::Transfer->value,
                     ], true))
-                    ->searchable(),
+                    ->searchable()
+                    ->live()
+                    ->afterStateUpdated(function (Set $set, ?int $state, Get $get): void {
+                        if (
+                            ($get('type') ?? null) === TransactionType::Transfer->value
+                            && $state === $get('destination_account_id')
+                        ) {
+                            $set('destination_account_id', null);
+                        }
+                    }),
                 Select::make('destination_account_id')
                     ->label(fn (Get $get): string => ($get('type') ?? null) === TransactionType::Income->value ? 'Account' : 'Destination account')
-                    ->options(fn (Get $get): array => static::userAccountOptions(static::resolveUserId($get('user_id'))))
+                    ->options(function (Get $get): array {
+                        $options = static::userAccountOptions(static::resolveUserId($get('user_id')));
+
+                        if (
+                            ($get('type') ?? null) === TransactionType::Transfer->value
+                            && ($sourceAccountId = $get('account_id'))
+                        ) {
+                            unset($options[$sourceAccountId]);
+                        }
+
+                        return $options;
+                    })
                     ->visible(fn (Get $get): bool => in_array($get('type'), [
                         TransactionType::Transfer->value,
                         TransactionType::Income->value,
@@ -93,11 +127,25 @@ class TransactionResource extends Resource
                         TransactionType::Transfer->value,
                         TransactionType::Income->value,
                     ], true))
-                    ->searchable(),
-                DateTimePicker::make('transaction_date')
+                    ->searchable()
+                    ->live()
+                    ->afterStateUpdated(function (Set $set, ?int $state, Get $get): void {
+                        if ($state === $get('account_id')) {
+                            $set('account_id', null);
+                        }
+                    })
+                    ->rule(fn (Get $get) => ($get('type') ?? null) === TransactionType::Transfer->value ? 'different:account_id' : null),
+                DatePicker::make('transaction_date')
                     ->label('Transaction date')
-                    ->seconds(false)
-                    ->default(now())
+                    ->default(fn (): string => now()->format('Y-m-d'))
+                    ->native(false)
+                    ->afterStateHydrated(function (DatePicker $component, $state): void {
+                        if ($state) {
+                            return;
+                        }
+
+                        $component->state(now()->format('Y-m-d'));
+                    })
                     ->required(),
                 TextInput::make('amount')
                     ->numeric()
@@ -120,13 +168,12 @@ class TransactionResource extends Resource
                     $query->where('user_id', Auth::id());
                 }
             })
-            ->defaultSort('created_at', 'desc')
+            ->defaultSort('transaction_date', 'desc')
+            ->defaultPaginationPageOption(25)
             ->columns([
                 TextColumn::make('rowNumber')
                     ->label('#')
-                    ->state(static function (TextColumn $column, $record, int $rowLoop): int {
-                        return $rowLoop + 1;
-                    })
+                    ->rowIndex()
                     ->sortable(false)
                     ->searchable(false),
                 TextColumn::make('user.email')
@@ -135,6 +182,16 @@ class TransactionResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('type')
                     ->badge()
+                    ->color(function ($state): string {
+                        $value = $state instanceof TransactionType ? $state->value : (string) $state;
+
+                        return match ($value) {
+                            TransactionType::Income->value => 'success',
+                            TransactionType::Expense->value => 'danger',
+                            TransactionType::Transfer->value => 'warning',
+                            default => 'primary',
+                        };
+                    })
                     ->formatStateUsing(
                         fn ($state): string => match (true) {
                             $state instanceof TransactionType => TransactionType::labels()[$state->value] ?? $state->value,
@@ -157,7 +214,7 @@ class TransactionResource extends Resource
                     ->toggleable(),
                 TextColumn::make('transaction_date')
                     ->label('Transaction date')
-                    ->dateTime()
+                    ->date()
                     ->sortable(),
                 TextColumn::make('amount')
                     ->numeric(decimalPlaces: 2)
@@ -169,15 +226,37 @@ class TransactionResource extends Resource
             ->filters([
                 SelectFilter::make('type')
                     ->options(TransactionType::labels()),
-                Filter::make('created_at')
+                Filter::make('transaction_date')
+                    ->label('Transaction date')
                     ->schema([
-                        DatePicker::make('from'),
-                        DatePicker::make('until'),
+                        DatePicker::make('from')
+                            ->default(fn (): string => now()->startOfMonth()->format('Y-m-d')),
+                        DatePicker::make('until')
+                            ->default(fn (): string => now()->endOfMonth()->format('Y-m-d')),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
-                            ->when($data['from'] ?? null, fn (Builder $inner, string $date): Builder => $inner->whereDate('created_at', '>=', $date))
-                            ->when($data['until'] ?? null, fn (Builder $inner, string $date): Builder => $inner->whereDate('created_at', '<=', $date));
+                            ->when($data['from'] ?? null, fn (Builder $inner, string $date): Builder => $inner->whereDate('transaction_date', '>=', $date))
+                            ->when($data['until'] ?? null, fn (Builder $inner, string $date): Builder => $inner->whereDate('transaction_date', '<=', $date));
+                    })
+                    ->default(fn (): array => [
+                        'from' => now()->startOfMonth()->format('Y-m-d'),
+                        'until' => now()->endOfMonth()->format('Y-m-d'),
+                    ])
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+
+                        if ($data['from'] ?? null) {
+                            $indicators[] = Indicator::make('From ' . Carbon::parse($data['from'])->toFormattedDateString())
+                                ->removeField('from');
+                        }
+
+                        if ($data['until'] ?? null) {
+                            $indicators[] = Indicator::make('Until ' . Carbon::parse($data['until'])->toFormattedDateString())
+                                ->removeField('until');
+                        }
+
+                        return $indicators;
                     }),
             ]);
     }

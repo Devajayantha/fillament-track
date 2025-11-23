@@ -7,9 +7,7 @@ use App\Filament\Resources\Accounts\Pages\ManageAccounts;
 use App\Filament\Resources\Accounts\RelationManagers\AccountUsersRelationManager;
 use App\Models\Account;
 use BackedEnum;
-use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
@@ -20,6 +18,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -78,6 +77,10 @@ class AccountResource extends Resource
                 });
             })
             ->columns([
+                TextColumn::make('row_number')
+                    ->label('#')
+                    ->rowIndex()
+                    ->sortable(false),
                 TextColumn::make('name')
                     ->sortable()
                     ->searchable(),
@@ -96,10 +99,6 @@ class AccountResource extends Resource
                     ->counts('userAccounts')
                     ->sortable()
                     ->visible(fn () => Auth::user()?->is_admin ?? false),
-                TextColumn::make('user.name')
-                    ->label('Owner')
-                    ->placeholder('')
-                    ->sortable(),
                 IconColumn::make('is_primary')
                     ->label('Primary')
                     ->boolean(),
@@ -129,14 +128,12 @@ class AccountResource extends Resource
                             : $query;
                     }),
             ])
+            ->recordActionsColumnLabel('Action')
+            ->recordActionsPosition(RecordActionsPosition::AfterColumns)
+            ->recordActionsAlignment('left')
             ->recordActions([
                 EditAction::make(),
                 DeleteAction::make(),
-            ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
             ]);
     }
 

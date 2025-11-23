@@ -12,6 +12,8 @@ use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -67,6 +69,10 @@ class CategoryResource extends Resource
                 });
             })
             ->columns([
+                TextColumn::make('row_number')
+                    ->label('#')
+                    ->rowIndex()
+                    ->alignCenter(),
                 TextColumn::make('name')
                     ->sortable()
                     ->searchable(),
@@ -80,13 +86,15 @@ class CategoryResource extends Resource
                         }
                     )
                     ->sortable(),
-                TextColumn::make('user.name')
-                    ->label('Owner')
-                    ->placeholder('')
-                    ->sortable(),
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable(),
+            ])
+            ->recordActionsColumnLabel('Action')
+            ->recordActions([
+                EditAction::make(),
+                DeleteAction::make()
+                    ->visible(fn (Category $record): bool => $record->transactions()->doesntExist()),
             ])
             ->filters([
                 SelectFilter::make('type')
