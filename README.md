@@ -1,59 +1,89 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Fillament Track
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A Filament-powered finance tracker for managing accounts, categories, and transactions with rich tables, filters, and dashboards.
 
-## About Laravel
+## Features
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- Multi-account management with primary/secondary relationships.
+- Categorized transactions with income, expense, and transfer support.
+- Dynamic filters, default current-month view, and per-type badge styling.
+- Admin-only management for users, accounts, and assignments.
+- Dashboard summary cards plus (soon) visual reporting widgets.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Requirements
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- PHP 8.2+
+- Composer 2+
+- Node.js 18+ and npm (for Vite assets)
+- MySQL or another database supported by Laravel
+- Redis/queue worker (optional, only if you plan to process queued jobs)
 
-## Learning Laravel
+## Installation
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+1. **Clone the repository**
+	```bash
+	git clone https://github.com/Devajayantha/fillament-track.git
+	cd fillament-track
+	```
+2. **Environment variables**
+	```bash
+	cp .env.example .env
+	```
+	Update database/mail credentials and set `APP_URL` to match your domain.
+3. **Install dependencies**
+	```bash
+	composer install
+	npm install
+	```
+4. **Generate the application key**
+	```bash
+	php artisan key:generate
+	```
+5. **Run migrations and seed demo data**
+	```bash
+	php artisan migrate --seed
+	```
+6. **Build assets**
+	```bash
+	npm run build   # or npm run dev for local hot reload
+	```
+7. **Serve the application**
+	```bash
+	php artisan serve
+	```
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+You should now be able to access the panel at `http://localhost:8000/dashboard`.
 
-## Laravel Sponsors
+## Demo
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+- Live preview: [track.devajayantha.web.id](https://track.devajayantha.web.id)
 
-### Premium Partners
+| Role  | Email              | Password |
+|-------|--------------------|----------|
+| Admin | admin@example.com  | password |
+| User  | user@example.com   | password |
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+> The seeded credentials above are safe to reset via `php artisan migrate:fresh --seed` during local development.
+
+## Screenshots
+
+![Landing](public/images/screenshoot/image1.png)
+![Dashboard](public/images/screenshoot/image2.png)
 
 ## Contributing
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+We’re open to contributions! open an issue or pull request, describe the feature/bug, and we’ll sync up before merging.
 
-## Code of Conduct
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### Contributors
 
-## Security Vulnerabilities
+- Devajayantha
+- _Your name here_ ✨
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## In Progress
+
+- Add report chart on dashboard (tracking category/date filters).
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+This project is released under the [MIT license](LICENSE).
