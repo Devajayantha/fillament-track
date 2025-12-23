@@ -5,8 +5,12 @@ namespace App\Filament\Resources\Transactions\Pages;
 use App\Enums\TransactionType;
 use App\Filament\Resources\Transactions\TransactionResource;
 use App\Filament\Resources\Transactions\Widgets\TransactionSummary;
+use App\Models\Transaction;
+use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ManageRecords;
+use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Auth;
 
 class ManageTransactions extends ManageRecords
 {
@@ -45,6 +49,21 @@ class ManageTransactions extends ManageRecords
                 ->mutateDataUsing(fn (array $data): array => array_merge($data, [
                     'type' => TransactionType::Transfer->value,
                 ])),
+            Action::make('syncBalances')
+                ->label('Sync Account Balances')
+                ->icon('heroicon-m-arrow-path')
+                ->requiresConfirmation()
+                ->modalHeading('Recalculate balances from transactions')
+                ->action(function (): void {
+                    $userId = Auth::user()?->is_admin ? null : Auth::id();
+                    $updated = Transaction::syncAccountBalances($userId);
+
+                    Notification::make()
+                        ->title('Balances synced')
+                        ->body("Updated {$updated} account balances.")
+                        ->success()
+                        ->send();
+                }),
         ];
     }
 

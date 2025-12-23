@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class Transaction extends Model
@@ -75,7 +76,7 @@ class Transaction extends Model
         });
 
         static::created(function (Transaction $transaction): void {
-            static::applyBalanceEffect($transaction);
+            static::syncAccountBalances($transaction->user_id);
         });
 
         static::updating(function (Transaction $transaction): void {
@@ -224,6 +225,78 @@ class Transaction extends Model
         }
 
         return $type ? (string) $type : null;
+    }
+
+    /**
+     * Recalculate and sync balances for user accounts from all transactions.
+     */
+    public static function syncAccountBalances(?int $userId = null): int
+    {
+        $accounts = UserAccount::query()
+            ->when($userId, fn ($query) => $query->where('user_id', $userId))
+            ->get();
+
+        $accountIds = $accounts->pluck('id')->all();
+
+        if ($accountIds === []) {
+            return 0;
+        }
+
+        $transactionSums = static::query()
+            ->selectRaw('account_id, destination_account_id, type, SUM(amount) as total')
+            ->when($userId, fn ($query) => $query->where('user_id', $userId))
+            ->groupBy('account_id', 'destination_account_id', 'type')
+            ->get();
+
+        $byAccount = [];
+
+        foreach ($transactionSums as $row) {
+            $typeValue = static::resolveTypeValue($row->type);
+            $accountId = $row->account_id;
+            $destinationId = $row->destination_account_id;
+            $total = (float) $row->total;
+
+            if ($typeValue === TransactionType::Income->value && $accountId) {
+                $byAccount[$accountId]['income'] = ($byAccount[$accountId]['income'] ?? 0.0) + $total;
+            }
+
+            if ($typeValue === TransactionType::Expense->value && $accountId) {
+                $byAccount[$accountId]['expense'] = ($byAccount[$accountId]['expense'] ?? 0.0) + $total;
+            }
+
+            if ($typeValue === TransactionType::Transfer->value && $accountId) {
+                $byAccount[$accountId]['transfer_out'] = ($byAccount[$accountId]['transfer_out'] ?? 0.0) + $total;
+            }
+
+            if ($typeValue === TransactionType::Transfer->value && $destinationId) {
+                $byAccount[$destinationId]['transfer_in'] = ($byAccount[$destinationId]['transfer_in'] ?? 0.0) + $total;
+            }
+        }
+
+        $updated = 0;
+
+        DB::transaction(function () use ($accounts, $byAccount, &$updated): void {
+            foreach ($accounts as $account) {
+                $income = $byAccount[$account->id]['income'] ?? 0.0;
+                $expense = $byAccount[$account->id]['expense'] ?? 0.0;
+                $transferIn = $byAccount[$account->id]['transfer_in'] ?? 0.0;
+                $transferOut = $byAccount[$account->id]['transfer_out'] ?? 0.0;
+
+                $account->balance = round(
+                    (float) $account->initial_balance
+                    + $income
+                    + $transferIn
+                    - $expense
+                    - $transferOut,
+                    2
+                );
+
+                $account->save();
+                $updated++;
+            }
+        });
+
+        return $updated;
     }
 
     protected static function throwValidation(string $field, string $message): never

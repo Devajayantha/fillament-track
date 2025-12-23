@@ -7,6 +7,8 @@ use App\Filament\Resources\Transactions\Pages\ManageTransactions;
 use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\UserAccount;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\EditAction;
 use BackedEnum;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -22,6 +24,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\Indicator;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Table;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -258,6 +261,13 @@ class TransactionResource extends Resource
 
                         return $indicators;
                     }),
+            ])
+            ->recordActionsColumnLabel('Action')
+            ->recordActionsPosition(RecordActionsPosition::AfterColumns)
+            ->recordActionsAlignment('left')
+            ->recordActions([
+                EditAction::make(),
+                DeleteAction::make(),
             ]);
     }
 

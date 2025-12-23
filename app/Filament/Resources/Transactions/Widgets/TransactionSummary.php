@@ -24,31 +24,12 @@ class TransactionSummary extends BaseWidget
         $monthLabel = $now->format('F Y');
 
         return [
-            $this->statForDay('Today Income', $today, TransactionType::Income),
-            $this->statForDay('Today Expense', $today, TransactionType::Expense),
-            $this->statForDay('Today Transfer', $today, TransactionType::Transfer),
             $this->statForRange('This Month Income', $monthStart, $now, TransactionType::Income, $monthLabel),
             $this->statForRange('This Month Expense', $monthStart, $now, TransactionType::Expense, $monthLabel),
             $this->statForRange('This Month Transfer', $monthStart, $now, TransactionType::Transfer, $monthLabel),
         ];
     }
-
-    protected function statForDay(string $label, Carbon $date, TransactionType $type): Stat
-    {
-        $amount = $this->amountForRange($date, $date, $type);
-        $formatted = 'IDR ' . number_format($amount, 2);
-
-        $color = match ($type) {
-            TransactionType::Income => 'success',
-            TransactionType::Expense => 'danger',
-            default => 'warning',
-        };
-
-        return Stat::make($label, $formatted)
-            ->description($date->toDateString())
-            ->color($color);
-    }
-
+    
     protected function statForRange(string $label, Carbon $from, Carbon $to, TransactionType $type, string $description): Stat
     {
         $amount = $this->amountForRange($from, $to, $type);
