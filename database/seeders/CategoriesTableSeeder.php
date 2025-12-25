@@ -28,10 +28,6 @@ class CategoriesTableSeeder extends Seeder
                 'type' => CategoryType::Expense->value,
             ],
             [
-                'name' => 'Transport',
-                'type' => CategoryType::Expense->value,
-            ],
-            [
                 'name' => 'Entertainment',
                 'type' => CategoryType::Expense->value,
             ],
