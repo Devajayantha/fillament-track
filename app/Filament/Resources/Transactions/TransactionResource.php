@@ -233,14 +233,14 @@ class TransactionResource extends Resource
                     ->label('Transaction date')
                     ->schema([
                         DatePicker::make('from')
-                            ->default(fn (): string => now()->startOfMonth()->format('Y-m-d')),
+                            ->default(fn (): string => now()->day(19)->format('Y-m-d')),
                         DatePicker::make('until')
-                            ->default(fn (): string => now()->endOfMonth()->format('Y-m-d')),
+                            ->default(fn (): string => now()->subMonthNoOverflow()->day(20)->format('Y-m-d')),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
-                            ->when($data['from'] ?? null, fn (Builder $inner, string $date): Builder => $inner->whereDate('transaction_date', '>=', $date))
-                            ->when($data['until'] ?? null, fn (Builder $inner, string $date): Builder => $inner->whereDate('transaction_date', '<=', $date));
+                            ->when($data['from'] ?? null, fn (Builder $inner, string $date): Builder => $inner->whereDate('transaction_date', '<=', $date))
+                            ->when($data['until'] ?? null, fn (Builder $inner, string $date): Builder => $inner->whereDate('transaction_date', '>=', $date));
                     })
                     ->default(fn (): array => [
                         'from' => now()->startOfMonth()->format('Y-m-d'),

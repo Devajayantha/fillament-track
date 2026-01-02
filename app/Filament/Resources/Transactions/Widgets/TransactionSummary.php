@@ -11,25 +11,28 @@ use Illuminate\Support\Facades\Auth;
 
 class TransactionSummary extends BaseWidget
 {
+    protected float $totalIncome = 0;
+    protected float $totalExpense = 0;
+
     protected function getColumns(): int
     {
-        return 3;
+        return 4;
     }
 
     protected function getStats(): array
     {
         $now = now();
-        $today = $now->copy();
-        $monthStart = $now->copy()->startOfMonth();
+        $monthEnd = $now->copy()->day(19);
+        $monthStart = $now->copy()->subMonthNoOverflow()->day(20);
         $monthLabel = $now->format('F Y');
 
         return [
-            $this->statForRange('This Month Income', $monthStart, $now, TransactionType::Income, $monthLabel),
-            $this->statForRange('This Month Expense', $monthStart, $now, TransactionType::Expense, $monthLabel),
-            $this->statForRange('This Month Transfer', $monthStart, $now, TransactionType::Transfer, $monthLabel),
+            $this->statForRange('This Month Income', $monthStart, $monthEnd, TransactionType::Income, $monthLabel),
+            $this->statForRange('This Month Expense', $monthStart, $monthEnd, TransactionType::Expense, $monthLabel),
+            $this->statForRange('This Month Transfer', $monthStart, $monthEnd, TransactionType::Transfer, $monthLabel),
         ];
     }
-    
+
     protected function statForRange(string $label, Carbon $from, Carbon $to, TransactionType $type, string $description): Stat
     {
         $amount = $this->amountForRange($from, $to, $type);

@@ -13,10 +13,10 @@ trait HasDateRangeFilter
     {
         // Example: last 7 days, this month, last month, custom
         return [
+            'this_middle_month' => 'This Middle Month',
             'this_month' => 'This Month',
             'last_month' => 'Last Month',
             'this_year' => 'This Year',
-            'this_middle_month' => 'This Middle Month',
         ];
     }
 
@@ -26,7 +26,8 @@ trait HasDateRangeFilter
     public function getDateRange(): array
     {
         $now = Carbon::now();
-        $filter = $this->filter ?? 'this_month';
+        $filter = $this->filter ?? 'this_middle_month';
+
         switch ($filter) {
             case 'last_month':
                 $start = $now->copy()->subMonthNoOverflow()->startOfMonth();
@@ -36,16 +37,17 @@ trait HasDateRangeFilter
                 $start = $now->copy()->startOfYear();
                 $end = $now->copy()->endOfYear();
                 break;
-            case 'this_middle_month':
-                $start = $now->copy()->day(20);
-                $end = $now->copy()->addMonthNoOverflow()->day(19);
-                break;
             case 'this_month':
-            default:
                 $start = $now->copy()->startOfMonth();
                 $end = $now->copy()->endOfMonth();
                 break;
+            case 'this_middle_month':
+            default:
+                $start = $now->copy()->day(19);
+                $end = $now->copy()->subMonthNoOverflow()->day(20);
+                break;
         }
-        return [$start->toDateString(), $end->toDateString()];
+
+        return [$start, $end];
     }
 }
