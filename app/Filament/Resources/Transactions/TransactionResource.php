@@ -3,43 +3,43 @@
 namespace App\Filament\Resources\Transactions;
 
 use App\Enums\TransactionType;
-use App\Filament\Resources\Transactions\Pages\ManageTransactions;
 use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\UserAccount;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
-use BackedEnum;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Resources\Resource;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
-use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\Indicator;
-use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Table;
-use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 
-class TransactionResource extends Resource
+abstract class TransactionResource extends Resource
 {
     protected static ?string $model = Transaction::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArrowsRightLeft;
+    abstract protected static function transactionType(): TransactionType;
+
+    protected static function transactionTypeValue(): string
+    {
+        return static::transactionType()->value;
+    }
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Finance';
+        return 'Transactions';
     }
 
     public static function shouldRegisterNavigation(): bool
@@ -53,39 +53,26 @@ class TransactionResource extends Resource
     {
         return $schema
             ->components([
-                Hidden::make('user_id')
-                    ->default(fn () => Auth::id())
-                    ->dehydrated(fn () => ! Auth::user()?->is_admin),
-                Select::make('user_id')
-                    ->relationship('user', 'name')
-                    ->searchable()
-                    ->preload()
-                    ->visible(fn () => Auth::user()?->is_admin)
-                    ->required(fn () => Auth::user()?->is_admin)
-                    ->live(),
-                Select::make('type')
-                    ->options(TransactionType::labels())
-                    ->required()
-                    ->live()
-                    ->disabled(fn (Get $get): bool => filled($get('type')))
-                    ->visible(fn (Get $get): bool => ($get('type') ?? null) !== TransactionType::Transfer->value),
+                Hidden::make('type')
+                    ->default(static::transactionTypeValue())
+                    ->dehydrated(),
                 Select::make('category_id')
                     ->label('Category')
                     ->options(fn (Get $get): array => static::categoryOptions(
                         static::resolveUserId($get('user_id')),
-                        $get('type')
+                        $get('type') ?? static::transactionTypeValue()
                     ))
                     ->searchable()
                     ->preload()
-                    ->visible(fn (Get $get): bool => ($get('type') ?? null) !== TransactionType::Transfer->value)
-                    ->required(fn (Get $get): bool => ($get('type') ?? null) !== TransactionType::Transfer->value),
+                    ->visible(fn (Get $get): bool => ($get('type') ?? static::transactionTypeValue()) !== TransactionType::Transfer->value)
+                    ->required(fn (Get $get): bool => ($get('type') ?? static::transactionTypeValue()) !== TransactionType::Transfer->value),
                 Select::make('account_id')
                     ->label('Account')
                     ->options(function (Get $get): array {
                         $options = static::userAccountOptions(static::resolveUserId($get('user_id')));
 
                         if (
-                            ($get('type') ?? null) === TransactionType::Transfer->value
+                            ($get('type') ?? static::transactionTypeValue()) === TransactionType::Transfer->value
                             && ($destinationId = $get('destination_account_id'))
                         ) {
                             unset($options[$destinationId]);
@@ -93,8 +80,8 @@ class TransactionResource extends Resource
 
                         return $options;
                     })
-                    ->visible(fn (Get $get): bool => ($get('type') ?? null) !== TransactionType::Income->value)
-                    ->required(fn (Get $get): bool => in_array($get('type'), [
+                    ->visible(fn (Get $get): bool => ($get('type') ?? static::transactionTypeValue()) !== TransactionType::Income->value)
+                    ->required(fn (Get $get): bool => in_array(($get('type') ?? static::transactionTypeValue()), [
                         TransactionType::Expense->value,
                         TransactionType::Transfer->value,
                     ], true))
@@ -102,19 +89,19 @@ class TransactionResource extends Resource
                     ->live()
                     ->afterStateUpdated(function (Set $set, ?int $state, Get $get): void {
                         if (
-                            ($get('type') ?? null) === TransactionType::Transfer->value
+                            ($get('type') ?? static::transactionTypeValue()) === TransactionType::Transfer->value
                             && $state === $get('destination_account_id')
                         ) {
                             $set('destination_account_id', null);
                         }
                     }),
                 Select::make('destination_account_id')
-                    ->label(fn (Get $get): string => ($get('type') ?? null) === TransactionType::Income->value ? 'Account' : 'Destination account')
+                    ->label(fn (Get $get): string => ($get('type') ?? static::transactionTypeValue()) === TransactionType::Income->value ? 'Account' : 'Destination account')
                     ->options(function (Get $get): array {
                         $options = static::userAccountOptions(static::resolveUserId($get('user_id')));
 
                         if (
-                            ($get('type') ?? null) === TransactionType::Transfer->value
+                            ($get('type') ?? static::transactionTypeValue()) === TransactionType::Transfer->value
                             && ($sourceAccountId = $get('account_id'))
                         ) {
                             unset($options[$sourceAccountId]);
@@ -122,11 +109,11 @@ class TransactionResource extends Resource
 
                         return $options;
                     })
-                    ->visible(fn (Get $get): bool => in_array($get('type'), [
+                    ->visible(fn (Get $get): bool => in_array(($get('type') ?? static::transactionTypeValue()), [
                         TransactionType::Transfer->value,
                         TransactionType::Income->value,
                     ], true))
-                    ->required(fn (Get $get): bool => in_array($get('type'), [
+                    ->required(fn (Get $get): bool => in_array(($get('type') ?? static::transactionTypeValue()), [
                         TransactionType::Transfer->value,
                         TransactionType::Income->value,
                     ], true))
@@ -137,7 +124,7 @@ class TransactionResource extends Resource
                             $set('account_id', null);
                         }
                     })
-                    ->rule(fn (Get $get) => ($get('type') ?? null) === TransactionType::Transfer->value ? 'different:account_id' : null),
+                    ->rule(fn (Get $get) => ($get('type') ?? static::transactionTypeValue()) === TransactionType::Transfer->value ? 'different:account_id' : null),
                 DatePicker::make('transaction_date')
                     ->label('Transaction date')
                     ->default(fn (): string => now()->format('Y-m-d'))
@@ -170,6 +157,8 @@ class TransactionResource extends Resource
                 if (! Auth::user()?->is_admin) {
                     $query->where('user_id', Auth::id());
                 }
+
+                $query->where('type', static::transactionTypeValue());
             })
             ->defaultSort('transaction_date', 'desc')
             ->defaultPaginationPageOption(25)
@@ -183,26 +172,6 @@ class TransactionResource extends Resource
                     ->label('User')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('type')
-                    ->badge()
-                    ->color(function ($state): string {
-                        $value = $state instanceof TransactionType ? $state->value : (string) $state;
-
-                        return match ($value) {
-                            TransactionType::Income->value => 'success',
-                            TransactionType::Expense->value => 'danger',
-                            TransactionType::Transfer->value => 'warning',
-                            default => 'primary',
-                        };
-                    })
-                    ->formatStateUsing(
-                        fn ($state): string => match (true) {
-                            $state instanceof TransactionType => TransactionType::labels()[$state->value] ?? $state->value,
-                            is_string($state) => TransactionType::labels()[$state] ?? $state,
-                            default => (string) ($state ?? 'N/A'),
-                        }
-                    )
-                    ->sortable(),
                 TextColumn::make('category.name')
                     ->label('Category')
                     ->placeholder('N/A')
@@ -214,7 +183,8 @@ class TransactionResource extends Resource
                 TextColumn::make('destinationAccount.account.name')
                     ->label('Destination')
                     ->placeholder('N/A')
-                    ->toggleable(),
+                    ->toggleable()
+                    ->visible(static::transactionTypeValue() === TransactionType::Transfer->value),
                 TextColumn::make('transaction_date')
                     ->label('Transaction date')
                     ->date()
@@ -222,13 +192,16 @@ class TransactionResource extends Resource
                 TextColumn::make('amount')
                     ->numeric(decimalPlaces: 2)
                     ->sortable(),
-                TextColumn::make('created_at')
+                    TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable(),
+                    TextColumn::make('desc')
+                    ->label('Description')
+                    ->toggleable()
+                    ->wrap()
+                    ->placeholder('—'),
             ])
             ->filters([
-                SelectFilter::make('type')
-                    ->options(TransactionType::labels()),
                 Filter::make('transaction_date')
                     ->label('Transaction date')
                     ->schema([
@@ -269,13 +242,6 @@ class TransactionResource extends Resource
                 EditAction::make(),
                 DeleteAction::make(),
             ]);
-    }
-
-    public static function getPages(): array
-    {
-        return [
-            'index' => ManageTransactions::route('/'),
-        ];
     }
 
     protected static function resolveUserId(?int $selectedUserId): ?int
